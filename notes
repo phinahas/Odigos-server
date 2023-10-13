@@ -1,0 +1,46 @@
+const token = await jwt.sign(
+          {
+            email: userFromDb.email,
+            userId: userFromDb._id.toString(),
+          },
+          constants.jwtSecret,
+          { expiresIn: "168h" }
+        );
+
+
+
+        ///////////////////////////// local time to utc time in react //////////////////
+
+        To display a timestamp in the user's local time in a React app, you can use the moment-timezone library to convert the UTC timestamp back to the user's local time zone. Here's how you can do it:
+
+Install moment-timezone if you haven't already:
+
+Copy code
+npm install moment-timezone
+In your React component, you can use the library to convert the UTC timestamp to the user's local time:
+
+javascript
+Copy code
+import React from 'react';
+import moment from 'moment-timezone';
+
+function ExpenseItem({ expense, userTimezone }) {
+  // Convert UTC timestamp to the user's local time
+  const localTime = moment(expense.date).tz(userTimezone);
+
+  return (
+    <div>
+      <p>Expense Name: {expense.name}</p>
+      <p>Expense Date: {localTime.format('LLL')}</p> {/* Format the local time as needed */}
+      <p>Expense Amount: ${expense.amount}</p>
+    </div>
+  );
+}
+
+
+
+const localTime = moment(date).tz(userFromDb.timezone);
+
+    console.log("Local time: " + localTime.format("LLL"));
+
+/////////////////////////////////////

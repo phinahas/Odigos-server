@@ -25,6 +25,15 @@ server.use((req, res, next) => {
     next();
   });
 
+  //Hadeling error and sending response
+server.use((error, req, res, next) => {
+  const statusCode = error.status || 500;
+  const message = error.message;
+  console.log(error);
+  res.status(statusCode).json({ message  });
+});
+
+
   dbConnnection.dbConnection.then(()=>{
     server.listen(PORT,()=>{
         console.log("Server started at:",PORT)

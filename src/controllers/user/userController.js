@@ -1,10 +1,47 @@
-exports.testController = async (req, res, next) => {
+const userHelper = require('../../helpers/userHelpers');
+
+exports.signup = async (req, res, next) => {
     try {
-      const body = req.body; 
-      let statusCode = 200; 
-      res.status(statusCode).send({body});
+      const response = await userHelper.signup(req.body);
+      res.status(response.statusCode).send({message:response.message});
+
     } catch (error) {
       const err = new Error(error.message);
       next(err);
     }
   };
+
+  exports.signin = async (req, res, next) => {
+    try {
+      const response = await userHelper.signin(req.body);
+      res.status(response.statusCode).send({message:response.message,user:response.user,token:response.token});
+
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+  };
+
+  exports.createCategory = async (req, res, next) => {
+    try {
+      const response = await userHelper.createCategory(req.body);
+      res.status(response.statusCode).send({message:response.message});
+
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+  };
+
+  exports.addExpense = async (req, res, next) => {
+    try {
+      const response = await userHelper.addExpense(req.body);
+      res.status(response.statusCode).send({message:response.message});
+
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+  };
+
+  

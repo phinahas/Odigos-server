@@ -18,7 +18,7 @@ const expenseSchema = new Schema({
     required: true,
     ref: "Label",
   },
-  name: {
+  title: {
     type: Schema.Types.String,
     required: true,
   },
