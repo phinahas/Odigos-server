@@ -22,6 +22,19 @@ exports.signup = async (req, res, next) => {
     }
   };
 
+  exports.getUser = async (req, res, next) => {
+    try {
+
+      req.body.timezone = req.query.timezone;
+      const response = await userHelper.getUser(req.body);
+      res.status(response.statusCode).send({message:response.message,user:response.user})
+      
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+  }
+
   exports.createCategory = async (req, res, next) => {
     try {
       const response = await userHelper.createCategory(req.body);

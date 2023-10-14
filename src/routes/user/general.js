@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.post('/create-category',userController.createCategory);
 router.post('/add-expense',tokenverification.isUser,userController.addExpense);
+router.get('/get-user',tokenverification.isUser,userController.getUser);
+
 
 
 module.exports = router;

@@ -33,7 +33,7 @@ exports.signup = async ({ email, name, password, timezone }) => {
   }
 };
 
-exports.signin = async ({ email, password }) => {
+exports.signin = async ({ email, password, timezone }) => {
   try {
     const userFromDb = await User.findOne({ email: email, isDeleted: false });
     if (!userFromDb) return { statusCode: 409, message: "User not found" };
@@ -47,12 +47,15 @@ exports.signin = async ({ email, password }) => {
       jwt_secret,
       { expiresIn: "168h" }
     );
+    userFromDb.timezone = timezone;
+    await userFromDb.save();
     return {
       statusCode: 200,
       user: {
         email: userFromDb.email,
         _id: userFromDb._id,
         name: userFromDb.name,
+        timezone:timezone
       },
       token: token,
     };
@@ -61,6 +64,36 @@ exports.signin = async ({ email, password }) => {
     throw error;
   }
 };
+
+exports.isUserVerification = async ({ userId }) => {
+  try {
+    const userFromDb = await User.findOne({ _id: userId, isDeleted: false });
+    if (!userFromDb) return { statusCode: 401, message: "No user found" };
+    return { statusCode: 200 };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+exports.getUser = async({userId, timezone})=> {
+  try {
+    const userFromDb = await User.findOne({ _id: userId, isDeleted: false });
+    if (!userFromDb) return { statusCode: 401, message: "No user found" };
+    userFromDb.timezone = timezone;
+    await userFromDb.save();
+    return { statusCode: 200,user: {
+      email: userFromDb.email,
+      _id: userFromDb._id,
+      name: userFromDb.name,
+      timezone:timezone
+    }, };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
 
 exports.createCategory = async ({ category }) => {
   try {
@@ -76,17 +109,6 @@ exports.createCategory = async ({ category }) => {
     });
     await categoryObj.save();
     return { statusCode: 200, message: "Category created successfully" };
-  } catch (error) {
-    console.log(error);
-    throw error;
-  }
-};
-
-exports.isUserVerification = async ({ userId }) => {
-  try {
-    const userFromDb = await User.findOne({ _id: userId, isDeleted: false });
-    if (!userFromDb) return { statusCode: 401, message: "No user found" };
-    return { statusCode: 200 };
   } catch (error) {
     console.log(error);
     throw error;
