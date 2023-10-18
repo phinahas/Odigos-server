@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post('/create-category',tokenverification.isUser,userController.createCategory);
 router.get('/get-categories',tokenverification.isUser,userController.getCategories);
+router.get('/get-labels',userController.getLabels);
 router.post('/add-expense',tokenverification.isUser,userController.addExpense);
 router.get('/get-user',tokenverification.isUser,userController.getUser);
 

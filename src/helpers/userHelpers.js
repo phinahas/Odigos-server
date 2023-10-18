@@ -6,6 +6,8 @@ const moment = require("moment-timezone");
 const User = require("../models/User");
 const Category = require("../models/Category");
 const Expense = require("../models/Expense");
+const Label = require("../models/Label");
+
 
 //helpers
 const { jwt_secret } = require("../configurations/constants");
@@ -154,6 +156,18 @@ exports.getCategories = async({userId})=>{
     if (categoriesFromDb.length === 0)
       return { statusCode: 204, message: "No data found" };
     return { statusCode: 200, categories:categoriesFromDb };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
+exports.getLabels = async()=>{
+  try {
+    const labelsFromDb = await Label.find({});
+    if (labelsFromDb.length === 0)
+      return { statusCode: 204, message: "No data found" };
+    return { statusCode: 200, labels:labelsFromDb };
   } catch (error) {
     console.log(error);
     throw error;

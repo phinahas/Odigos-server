@@ -73,3 +73,17 @@ exports.signup = async (req, res, next) => {
 
   }
   
+  exports.getLabels = async (req, res, next) => {
+
+    try {
+
+     
+      const response = await userHelper.getLabels(req.body);
+      res.status(response.statusCode).send({message:response.message,labels:response.labels})
+      
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+
+  }
