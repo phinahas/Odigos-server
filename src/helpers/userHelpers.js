@@ -95,17 +95,19 @@ exports.getUser = async({userId, timezone})=> {
 };
 
 
-exports.createCategory = async ({ category }) => {
+exports.createCategory = async ({ category,userId }) => {
   try {
     let transformedCategory = modelCategoryName(category);
 
     const categoryFromDb = await Category.findOne({
       name: transformedCategory,
+      user:userId
     });
     if (categoryFromDb)
       return { statusCode: 409, message: "Category already exist" };
     const categoryObj = new Category({
       name: transformedCategory,
+      user:userId
     });
     await categoryObj.save();
     return { statusCode: 200, message: "Category created successfully" };
@@ -144,11 +146,11 @@ exports.addExpense = async ({
   }
 };
 
-exports.getCategories = async()=>{
+exports.getCategories = async({userId})=>{
   try {
  
 
-    const categoriesFromDb = await Category.find({});
+    const categoriesFromDb = await Category.find({user:userId});
     if (categoriesFromDb.length === 0)
       return { statusCode: 204, message: "No data found" };
     return { statusCode: 200, categories:categoriesFromDb };
