@@ -143,3 +143,17 @@ exports.addExpense = async ({
     throw error;
   }
 };
+
+exports.getCategories = async()=>{
+  try {
+ 
+
+    const categoriesFromDb = await Category.find({});
+    if (categoriesFromDb.length === 0)
+      return { statusCode: 204, message: "No data found" };
+    return { statusCode: 200, categories:categoriesFromDb };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}

@@ -57,4 +57,19 @@ exports.signup = async (req, res, next) => {
     }
   };
 
+
+  exports.getCategories = async (req, res, next) => {
+
+    try {
+
+     
+      const response = await userHelper.getCategories();
+      res.status(response.statusCode).send({message:response.message,categories:response.categories})
+      
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+
+  }
   
