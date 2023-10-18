@@ -63,7 +63,7 @@ exports.signup = async (req, res, next) => {
     try {
 
      
-      const response = await userHelper.getCategories();
+      const response = await userHelper.getCategories(req.body);
       res.status(response.statusCode).send({message:response.message,categories:response.categories})
       
     } catch (error) {
