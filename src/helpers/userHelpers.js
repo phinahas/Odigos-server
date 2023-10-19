@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const moment = require("moment-timezone");
+const ObjectId = require("mongoose").Types.ObjectId;
 
 //Models
 const User = require("../models/User");
@@ -111,8 +112,9 @@ exports.createCategory = async ({ category,userId }) => {
       name: transformedCategory,
       user:userId
     });
-    await categoryObj.save();
-    return { statusCode: 200, message: "Category created successfully" };
+    let res = await categoryObj.save();
+    
+    return { statusCode: 200, message: "Category created successfully",newCategory:res };
   } catch (error) {
     console.log(error);
     throw error;
@@ -140,8 +142,58 @@ exports.addExpense = async ({
       amount: amount,
       date: utcTimestamp,
     });
-    await expObj.save();
-    return { statusCode: 200, message: "New entry created." };
+    let res =  await expObj.save();
+    console.log(res);
+    let populatedRes = await Expense.aggregate([
+      {
+        $match:{
+          _id:new ObjectId(res._id)
+        }
+      },
+      {
+        $lookup:{
+          from:'users',
+          localField:'user',
+          foreignField:'_id',
+          as:'userData',
+        }
+      },
+        {
+          $lookup:{
+            from:'categories',
+            localField:'category',
+            foreignField:'_id',
+            as:'categoryData',
+          }
+        
+      },
+      {
+        $lookup:{
+          from:'labels',
+          localField:'label',
+          foreignField:'_id',
+          as:'labelData',
+        }
+      
+    },
+      {
+        $unwind:'$userData'
+      },
+      
+      {
+        $project:{
+          
+          category:{ $arrayElemAt: ['$categoryData.name', 0] },
+          label:{ $arrayElemAt: ['$labelData.name', 0] },
+          title:'$title',
+          amount:'$amount',
+          date:'$date',
+          remarks:'$remarks',
+          timezone:'$userData.timezone',
+        }
+      },
+    ])
+    return { statusCode: 200, message: "New entry created.", expense:populatedRes[0] };
   } catch (error) {
     console.log(error);
     throw error;
@@ -168,6 +220,96 @@ exports.getLabels = async()=>{
     if (labelsFromDb.length === 0)
       return { statusCode: 204, message: "No data found" };
     return { statusCode: 200, labels:labelsFromDb };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
+exports.getExpense = async({userId,filter})=>{
+  try {
+
+    if(filter != 'today') return {statusCode:409,message:"Invalid filter condition: "+filter};
+
+    let qry = {user:new ObjectId(userId)};
+    if(filter == 'today'){
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setUTCDate(today.getUTCDate() + 1);
+      qry['date'] = {$gte:today,$lt:tomorrow};
+    
+    }
+
+    const expensesFromDb = await Expense.aggregate([
+      {
+        $match:qry
+      },
+      {
+        $lookup:{
+          from:'users',
+          localField:'user',
+          foreignField:'_id',
+          as:'userData',
+        }
+      },
+        {
+          $lookup:{
+            from:'categories',
+            localField:'category',
+            foreignField:'_id',
+            as:'categoryData',
+          }
+        
+      },
+      {
+        $lookup:{
+          from:'labels',
+          localField:'label',
+          foreignField:'_id',
+          as:'labelData',
+        }
+      
+    },
+      {
+        $unwind:'$userData'
+      },
+      
+      {
+        $project:{
+          
+          category:{ $arrayElemAt: ['$categoryData.name', 0] },
+          label:{ $arrayElemAt: ['$labelData.name', 0] },
+          title:'$title',
+          amount:'$amount',
+          date:'$date',
+          remarks:'$remarks',
+          timezone:'$userData.timezone',
+        }
+      },
+      {
+        $group: {
+            _id: null,
+            totalAmount: { $sum: '$amount' },
+            expenses: { $push: '$$ROOT' } // This preserves the individual expenses
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            totalAmount: '$totalAmount',
+            expenses: 1
+        }
+    }
+    ])
+ 
+    if(expensesFromDb.length === 0) return {statusCode:204,message:"No data found"}
+
+    return {statusCode:200,expenses:expensesFromDb[0].expenses,totalAmount:expensesFromDb[0].totalAmount};
+
+
+
+    
   } catch (error) {
     console.log(error);
     throw error;

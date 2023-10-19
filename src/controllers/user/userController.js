@@ -38,7 +38,7 @@ exports.signup = async (req, res, next) => {
   exports.createCategory = async (req, res, next) => {
     try {
       const response = await userHelper.createCategory(req.body);
-      res.status(response.statusCode).send({message:response.message});
+      res.status(response.statusCode).send({message:response.message,newCategory:response.newCategory});
 
     } catch (error) {
       const err = new Error(error.message);
@@ -49,7 +49,7 @@ exports.signup = async (req, res, next) => {
   exports.addExpense = async (req, res, next) => {
     try {
       const response = await userHelper.addExpense(req.body);
-      res.status(response.statusCode).send({message:response.message});
+      res.status(response.statusCode).send({message:response.message,newExpense:response.expense});
 
     } catch (error) {
       const err = new Error(error.message);
@@ -86,4 +86,18 @@ exports.signup = async (req, res, next) => {
       next(err);
     }
 
+  }
+
+
+  exports.getExpense = async(req,res,next)=>{
+    try {
+
+      req.body.filter = req.query.filter;
+      const response = await userHelper.getExpense(req.body);
+      res.status(response.statusCode).send({message:response.message,expenses:response.expenses,totalAmount:response.totalAmount});
+      
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
   }
