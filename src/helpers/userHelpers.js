@@ -202,8 +202,6 @@ exports.addExpense = async ({
 
 exports.getCategories = async({userId})=>{
   try {
- 
-
     const categoriesFromDb = await Category.find({user:userId});
     if (categoriesFromDb.length === 0)
       return { statusCode: 204, message: "No data found" };

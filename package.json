@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon src/server.js",
-    "start:dev": "copy .env.dev .env && nodemon src/server.js"
+    "start:dev": "copy .env.dev .env && nodemon src/server.js",
+    "start:prodLcl": "copy .env.production.local .env && nodemon src/server.js"
   },
   "repository": {
     "type": "git",
