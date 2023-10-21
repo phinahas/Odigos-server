@@ -228,14 +228,25 @@ exports.getExpense = async({userId,filter})=>{
   try {
 
     if(filter != 'today') return {statusCode:409,message:"Invalid filter condition: "+filter};
+    const userFromDb = await User.findById(userId,{timezone:1});
+    const timezone = userFromDb.timezone;
+
 
     let qry = {user:new ObjectId(userId)};
     if(filter == 'today'){
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setUTCDate(today.getUTCDate() + 1);
-      qry['date'] = {$gte:today,$lt:tomorrow};
+    
+  
+// Determine the user's chosen day in their timezone
+const userChosenDay = moment.tz(timezone).startOf('day');
+
+// Convert the user's chosen day to UTC
+const userChosenDayUTC = userChosenDay.clone().utc();
+
+// Calculate the start and end of the day in UTC
+const startOfDayUTC = userChosenDayUTC.toDate();
+const endOfDayUTC = userChosenDayUTC.clone().add(1, 'days').toDate();
+
+      qry['date'] = { $gte: startOfDayUTC, $lt: endOfDayUTC };
     
     }
 
