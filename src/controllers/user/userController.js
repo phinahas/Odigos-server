@@ -105,9 +105,11 @@ exports.signup = async (req, res, next) => {
   exports.analysisTheExpenseBy = async(req,res,next)=>{
     try {
 
-      req.body.filter = req.query.filter;
+      req.body.criteria = req.query.criteria;
       req.body.startDate = req.query.startDate;
       req.body.endDate = req.query.endDate;
+
+      if(req.body.criteria != 'date' && req.body.criteria != 'category') res.status(409).send({message: 'Invalid criteria: '+req.body.criteria});
       const response = await userHelper.analysisTheExpenseBy(req.body);
       res.status(response.statusCode).send({message:response.message,expenses:response.finalArray});
       

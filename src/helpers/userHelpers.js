@@ -328,7 +328,12 @@ exports.getExpense = async ({ userId, filter }) => {
   }
 };
 
-exports.analysisTheExpenseBy = async ({ startDate, endDate, userId }) => {
+exports.analysisTheExpenseBy = async ({
+  startDate,
+  endDate,
+  criteria,
+  userId,
+}) => {
   try {
     const userFromDb = await User.findById(userId, { timezone: 1 });
     const timezone = userFromDb.timezone;
@@ -336,61 +341,180 @@ exports.analysisTheExpenseBy = async ({ startDate, endDate, userId }) => {
     const startDayUTC = moment(startDate).utc();
     const endDayUTC = moment(endDate).utc();
 
-    
-    const expensesFromDb = await Expense.aggregate([
+    let aggregateArry = [
       {
         $match: {
           user: new ObjectId(userId),
           date: {
             $gte: new Date(startDate),
-            $lt: new Date(endDate)
-          }
-        }
+            $lt: new Date(endDate),
+          },
+        },
       },
       {
         $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userData'
-        }
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userData",
+        },
       },
       {
-        $unwind: '$userData'
+        $unwind: "$userData",
       },
-      {
+    ];
+
+    if (criteria == "date") {
+      aggregateArry.push({
         $project: {
-          dateToSort:{ $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: '$userData.timezone' } },
-          date:1,
+          dateToSort: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$date",
+              timezone: "$userData.timezone",
+            },
+          },
+          date: 1,
           category: 1,
           label: 1,
           title: 1,
           amount: 1,
           remarks: 1,
-          timezone: '$userData.timezone'
+          timezone: "$userData.timezone",
+        },
+      });
+      aggregateArry.push(
+        {
+          $group: {
+            _id: "$dateToSort",
+            //expenses: { $push: '$$ROOT' }, not needed now
+            totalAmount: { $sum: "$amount" },
+          },
+        },
+       
+      );
+      aggregateArry.push(
+        {
+          $sort: { day: -1 },
+        },
+       
+      );
+      aggregateArry.push(
+        {
+          $project: {
+            _id: 0,
+            day: "$_id",
+            totalAmount: 1,
+          },
         }
-      },
-      {
-        $group: {
-          _id: '$dateToSort',
-          //expenses: { $push: '$$ROOT' }, not needed now
-          totalAmount: { $sum: '$amount' }
-        }
-      },
-      {
-          $sort:{day:-1}
-      },
-      {
-        $project: {
-          _id: 0,
-          day: '$_id',
-          totalAmount: 1,
-          
-        }
-      }
-    ]);
-    
-  
+      )
+    }
+    if(criteria == "category"){
+
+      var categoryLookup = {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "categoryData",
+      };
+
+      var catlookup = {$lookup:categoryLookup};
+      aggregateArry.push(catlookup);
+      
+      aggregateArry.push({$project: {
+        day: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: "$date",
+            timezone: "$userData.timezone",
+          },
+        },
+        date: 1,
+        category: { $arrayElemAt: ["$categoryData.name", 0] },
+        amount: 1,}})
+        aggregateArry.push(
+          {
+            $group: {
+              _id: "$category",
+              //expenses: { $push: '$$ROOT' }, not needed now
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+         
+        );
+        aggregateArry.push(
+          {
+            $sort: { day: -1 },
+          },
+         
+        );
+        aggregateArry.push(
+          {
+            $project: {
+              _id: 0,
+              day:1,
+              category:'$_id',
+              totalAmount: 1,
+            },
+          }
+        )
+    }
+
+    // const expensesFromDb = await Expense.aggregate([
+    //   {
+    //     $match: {
+    //       user: new ObjectId(userId),
+    //       date: {
+    //         $gte: new Date(startDate),
+    //         $lt: new Date(endDate)
+    //       }
+    //     }
+    //   },
+    //   {
+    //     $lookup: {
+    //       from: 'users',
+    //       localField: 'user',
+    //       foreignField: '_id',
+    //       as: 'userData'
+    //     }
+    //   },
+    //   {
+    //     $unwind: '$userData'
+    //   },
+    //   /////////
+    //   {
+    //     $project: {
+    //       dateToSort:{ $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: '$userData.timezone' } },
+    //       date:1,
+    //       category: 1,
+    //       label: 1,
+    //       title: 1,
+    //       amount: 1,
+    //       remarks: 1,
+    //       timezone: '$userData.timezone'
+    //     }
+    //   },
+    //   {
+    //     $group: {
+    //       _id: '$dateToSort',
+    //       //expenses: { $push: '$$ROOT' }, not needed now
+    //       totalAmount: { $sum: '$amount' }
+    //     }
+    //   },
+    //   {
+    //       $sort:{day:-1}
+    //   },
+    //   {
+    //     $project: {
+    //       _id: 0,
+    //       day: '$_id',
+    //       totalAmount: 1,
+
+    //     }
+    //   }
+    // ]);
+
+    const expensesFromDb = await Expense.aggregate(aggregateArry);
 
     return { statusCode: 200, finalArray: expensesFromDb };
   } catch (error) {
