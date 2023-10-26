@@ -241,6 +241,7 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
     const timezone = userFromDb.timezone;
 
     let qry = { user: new ObjectId(userId) };
+    let prevDayQry = { user: new ObjectId(userId) };
     if (filter == "today") {
       // Determine the user's chosen day in their timezone
       const userChosenDay = moment.tz(timezone).startOf("day");
@@ -251,6 +252,14 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       // Calculate the start and end of the day in UTC
       const startOfDayUTC = userChosenDayUTC.toDate();
       const endOfDayUTC = userChosenDayUTC.clone().add(1, "days").toDate();
+
+      const startOfPrevDay = userChosenDayUTC.clone().subtract(2,"days").toDate();
+      const endOfPrevDay = userChosenDayUTC.clone().subtract(1,"days").toDate();
+      console.log(startOfPrevDay, endOfPrevDay);
+       
+
+      prevDayQry["date"] = { $gte: startOfPrevDay, $lt: endOfPrevDay };
+
 
       qry["date"] = { $gte: startOfDayUTC, $lt: endOfDayUTC };
     }
@@ -302,7 +311,6 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       {
         $unwind: "$userData",
       },
-
       {
         $project: {
           category: { $arrayElemAt: ["$categoryData.name", 0] },
@@ -330,6 +338,29 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       },
     ]);
 
+    let prevExpensesFromDb = [];
+    if(filter == "today"){
+         prevExpensesFromDb = await Expense.aggregate([
+
+          {
+            $match: prevDayQry,
+          },
+          {
+            $group:{
+              _id:null,
+              previousDayExpense:{$sum:'$amount'}
+            }
+          },
+          {
+            $project:{
+              _id:0,
+              previousDayExpense:1
+            }
+          }
+    ])
+
+    }
+
     if (expensesFromDb.length === 0)
       return { statusCode: 204, message: "No data found" };
 
@@ -337,6 +368,7 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       statusCode: 200,
       expenses: expensesFromDb[0].expenses,
       totalAmount: expensesFromDb[0].totalAmount,
+      previousDayTotalAmount:prevExpensesFromDb.length == 0 ? 0:prevExpensesFromDb[0].previousDayExpense
     };
   } catch (error) {
     console.log(error);
