@@ -230,9 +230,9 @@ exports.getLabels = async () => {
   }
 };
 
-exports.getExpense = async ({ userId, filter }) => {
+exports.getExpense = async ({ userId,customDate, filter }) => {
   try {
-    if (filter != "today")
+    if (filter != "today" && filter != "custom")
       return {
         statusCode: 409,
         message: "Invalid filter condition: " + filter,
@@ -247,6 +247,22 @@ exports.getExpense = async ({ userId, filter }) => {
 
       // Convert the user's chosen day to UTC
       const userChosenDayUTC = userChosenDay.clone().utc();
+
+      // Calculate the start and end of the day in UTC
+      const startOfDayUTC = userChosenDayUTC.toDate();
+      const endOfDayUTC = userChosenDayUTC.clone().add(1, "days").toDate();
+
+      qry["date"] = { $gte: startOfDayUTC, $lt: endOfDayUTC };
+    }
+    if(filter == "custom"){
+      if(!customDate)
+      return {
+        statusCode: 409,
+        message: "Invalid date: " + customDate,
+      };
+
+      const chosenDate = moment.tz(customDate, timezone);
+      const userChosenDayUTC = chosenDate.clone().utc();
 
       // Calculate the start and end of the day in UTC
       const startOfDayUTC = userChosenDayUTC.toDate();
