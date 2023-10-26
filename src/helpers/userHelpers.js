@@ -9,7 +9,6 @@ const Category = require("../models/Category");
 const Expense = require("../models/Expense");
 const Label = require("../models/Label");
 
-
 //helpers
 const { jwt_secret } = require("../configurations/constants");
 const { modelCategoryName } = require("../utils/commonFns");
@@ -58,7 +57,7 @@ exports.signin = async ({ email, password, timezone }) => {
         email: userFromDb.email,
         _id: userFromDb._id,
         name: userFromDb.name,
-        timezone:timezone
+        timezone: timezone,
       },
       token: token,
     };
@@ -79,42 +78,48 @@ exports.isUserVerification = async ({ userId }) => {
   }
 };
 
-exports.getUser = async({userId, timezone})=> {
+exports.getUser = async ({ userId, timezone }) => {
   try {
     const userFromDb = await User.findOne({ _id: userId, isDeleted: false });
     if (!userFromDb) return { statusCode: 401, message: "No user found" };
     userFromDb.timezone = timezone;
     await userFromDb.save();
-    return { statusCode: 200,user: {
-      email: userFromDb.email,
-      _id: userFromDb._id,
-      name: userFromDb.name,
-      timezone:timezone
-    }, };
+    return {
+      statusCode: 200,
+      user: {
+        email: userFromDb.email,
+        _id: userFromDb._id,
+        name: userFromDb.name,
+        timezone: timezone,
+      },
+    };
   } catch (error) {
     console.log(error);
     throw error;
   }
 };
 
-
-exports.createCategory = async ({ category,userId }) => {
+exports.createCategory = async ({ category, userId }) => {
   try {
     let transformedCategory = modelCategoryName(category);
 
     const categoryFromDb = await Category.findOne({
       name: transformedCategory,
-      user:userId
+      user: userId,
     });
     if (categoryFromDb)
       return { statusCode: 409, message: "Category already exist" };
     const categoryObj = new Category({
       name: transformedCategory,
-      user:userId
+      user: userId,
     });
     let res = await categoryObj.save();
-    
-    return { statusCode: 200, message: "Category created successfully",newCategory:res };
+
+    return {
+      statusCode: 200,
+      message: "Category created successfully",
+      newCategory: res,
+    };
   } catch (error) {
     console.log(error);
     throw error;
@@ -142,185 +147,254 @@ exports.addExpense = async ({
       amount: amount,
       date: utcTimestamp,
     });
-    let res =  await expObj.save();
+    let res = await expObj.save();
     console.log(res);
     let populatedRes = await Expense.aggregate([
       {
-        $match:{
-          _id:new ObjectId(res._id)
-        }
+        $match: {
+          _id: new ObjectId(res._id),
+        },
       },
       {
-        $lookup:{
-          from:'users',
-          localField:'user',
-          foreignField:'_id',
-          as:'userData',
-        }
-      },
-        {
-          $lookup:{
-            from:'categories',
-            localField:'category',
-            foreignField:'_id',
-            as:'categoryData',
-          }
-        
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userData",
+        },
       },
       {
-        $lookup:{
-          from:'labels',
-          localField:'label',
-          foreignField:'_id',
-          as:'labelData',
-        }
-      
-    },
-      {
-        $unwind:'$userData'
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "categoryData",
+        },
       },
-      
       {
-        $project:{
-          
-          category:{ $arrayElemAt: ['$categoryData.name', 0] },
-          label:{ $arrayElemAt: ['$labelData.name', 0] },
-          title:'$title',
-          amount:'$amount',
-          date:'$date',
-          remarks:'$remarks',
-          timezone:'$userData.timezone',
-        }
+        $lookup: {
+          from: "labels",
+          localField: "label",
+          foreignField: "_id",
+          as: "labelData",
+        },
       },
-    ])
-    return { statusCode: 200, message: "New entry created.", expense:populatedRes[0] };
+      {
+        $unwind: "$userData",
+      },
+
+      {
+        $project: {
+          category: { $arrayElemAt: ["$categoryData.name", 0] },
+          label: { $arrayElemAt: ["$labelData.name", 0] },
+          title: "$title",
+          amount: "$amount",
+          date: "$date",
+          remarks: "$remarks",
+          timezone: "$userData.timezone",
+        },
+      },
+    ]);
+    return {
+      statusCode: 200,
+      message: "New entry created.",
+      expense: populatedRes[0],
+    };
   } catch (error) {
     console.log(error);
     throw error;
   }
 };
 
-exports.getCategories = async({userId})=>{
+exports.getCategories = async ({ userId }) => {
   try {
-    const categoriesFromDb = await Category.find({user:userId});
+    const categoriesFromDb = await Category.find({ user: userId });
     if (categoriesFromDb.length === 0)
       return { statusCode: 204, message: "No data found" };
-    return { statusCode: 200, categories:categoriesFromDb };
+    return { statusCode: 200, categories: categoriesFromDb };
   } catch (error) {
     console.log(error);
     throw error;
   }
-}
+};
 
-exports.getLabels = async()=>{
+exports.getLabels = async () => {
   try {
     const labelsFromDb = await Label.find({});
     if (labelsFromDb.length === 0)
       return { statusCode: 204, message: "No data found" };
-    return { statusCode: 200, labels:labelsFromDb };
+    return { statusCode: 200, labels: labelsFromDb };
   } catch (error) {
     console.log(error);
     throw error;
   }
-}
+};
 
-exports.getExpense = async({userId,filter})=>{
+exports.getExpense = async ({ userId, filter }) => {
   try {
-
-    if(filter != 'today') return {statusCode:409,message:"Invalid filter condition: "+filter};
-    const userFromDb = await User.findById(userId,{timezone:1});
+    if (filter != "today")
+      return {
+        statusCode: 409,
+        message: "Invalid filter condition: " + filter,
+      };
+    const userFromDb = await User.findById(userId, { timezone: 1 });
     const timezone = userFromDb.timezone;
 
+    let qry = { user: new ObjectId(userId) };
+    if (filter == "today") {
+      // Determine the user's chosen day in their timezone
+      const userChosenDay = moment.tz(timezone).startOf("day");
 
-    let qry = {user:new ObjectId(userId)};
-    if(filter == 'today'){
-    
-  
-// Determine the user's chosen day in their timezone
-const userChosenDay = moment.tz(timezone).startOf('day');
+      // Convert the user's chosen day to UTC
+      const userChosenDayUTC = userChosenDay.clone().utc();
 
-// Convert the user's chosen day to UTC
-const userChosenDayUTC = userChosenDay.clone().utc();
+      // Calculate the start and end of the day in UTC
+      const startOfDayUTC = userChosenDayUTC.toDate();
+      const endOfDayUTC = userChosenDayUTC.clone().add(1, "days").toDate();
 
-// Calculate the start and end of the day in UTC
-const startOfDayUTC = userChosenDayUTC.toDate();
-const endOfDayUTC = userChosenDayUTC.clone().add(1, 'days').toDate();
-
-      qry['date'] = { $gte: startOfDayUTC, $lt: endOfDayUTC };
-    
+      qry["date"] = { $gte: startOfDayUTC, $lt: endOfDayUTC };
     }
 
     const expensesFromDb = await Expense.aggregate([
       {
-        $match:qry
+        $match: qry,
       },
       {
-        $lookup:{
-          from:'users',
-          localField:'user',
-          foreignField:'_id',
-          as:'userData',
-        }
-      },
-        {
-          $lookup:{
-            from:'categories',
-            localField:'category',
-            foreignField:'_id',
-            as:'categoryData',
-          }
-        
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userData",
+        },
       },
       {
-        $lookup:{
-          from:'labels',
-          localField:'label',
-          foreignField:'_id',
-          as:'labelData',
-        }
-      
-    },
-      {
-        $unwind:'$userData'
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "categoryData",
+        },
       },
-      
       {
-        $project:{
-          
-          category:{ $arrayElemAt: ['$categoryData.name', 0] },
-          label:{ $arrayElemAt: ['$labelData.name', 0] },
-          title:'$title',
-          amount:'$amount',
-          date:'$date',
-          remarks:'$remarks',
-          timezone:'$userData.timezone',
-        }
+        $lookup: {
+          from: "labels",
+          localField: "label",
+          foreignField: "_id",
+          as: "labelData",
+        },
+      },
+      {
+        $unwind: "$userData",
+      },
+
+      {
+        $project: {
+          category: { $arrayElemAt: ["$categoryData.name", 0] },
+          label: { $arrayElemAt: ["$labelData.name", 0] },
+          title: "$title",
+          amount: "$amount",
+          date: "$date",
+          remarks: "$remarks",
+          timezone: "$userData.timezone",
+        },
       },
       {
         $group: {
-            _id: null,
-            totalAmount: { $sum: '$amount' },
-            expenses: { $push: '$$ROOT' } // This preserves the individual expenses
-        }
-    },
-    {
+          _id: null,
+          totalAmount: { $sum: "$amount" },
+          expenses: { $push: "$$ROOT" }, // This preserves the individual expenses
+        },
+      },
+      {
         $project: {
-            _id: 0,
-            totalAmount: '$totalAmount',
-            expenses: 1
-        }
-    }
-    ])
- 
-    if(expensesFromDb.length === 0) return {statusCode:204,message:"No data found"}
+          _id: 0,
+          totalAmount: "$totalAmount",
+          expenses: 1,
+        },
+      },
+    ]);
 
-    return {statusCode:200,expenses:expensesFromDb[0].expenses,totalAmount:expensesFromDb[0].totalAmount};
+    if (expensesFromDb.length === 0)
+      return { statusCode: 204, message: "No data found" };
 
-
-
-    
+    return {
+      statusCode: 200,
+      expenses: expensesFromDb[0].expenses,
+      totalAmount: expensesFromDb[0].totalAmount,
+    };
   } catch (error) {
     console.log(error);
     throw error;
   }
-}
+};
+
+exports.analysisTheExpenseBy = async ({ startDate, endDate, userId }) => {
+  try {
+    const userFromDb = await User.findById(userId, { timezone: 1 });
+    const timezone = userFromDb.timezone;
+
+    const startDayUTC = moment(startDate).utc();
+    const endDayUTC = moment(endDate).utc();
+
+    
+    const expensesFromDb = await Expense.aggregate([
+      {
+        $match: {
+          user: new ObjectId(userId),
+          date: {
+            $gte: new Date(startDate),
+            $lt: new Date(endDate)
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userData'
+        }
+      },
+      {
+        $unwind: '$userData'
+      },
+      {
+        $project: {
+          dateToSort:{ $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: '$userData.timezone' } },
+          date:1,
+          category: 1,
+          label: 1,
+          title: 1,
+          amount: 1,
+          remarks: 1,
+          timezone: '$userData.timezone'
+        }
+      },
+      {
+        $group: {
+          _id: '$dateToSort',
+          //expenses: { $push: '$$ROOT' }, not needed now
+          totalAmount: { $sum: '$amount' }
+        }
+      },
+      {
+          $sort:{day:-1}
+      },
+      {
+        $project: {
+          _id: 0,
+          day: '$_id',
+          totalAmount: 1,
+          
+        }
+      }
+    ]);
+    
+  
+
+    return { statusCode: 200, finalArray: expensesFromDb };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};

@@ -44,3 +44,88 @@ const localTime = moment(date).tz(userFromDb.timezone);
     console.log("Local time: " + localTime.format("LLL"));
 
 /////////////////////////////////////
+
+
+
+
+//////////////////////////////////////////////////////////////////////Group by category//////////////////////////////////////////////////////////////////////////
+const expensesFromDb = await Expense.aggregate([
+  {
+    $match: {
+      user: new ObjectId(userId),
+      date: {
+        $gte: new Date(startDate),
+        $lt: new Date(endDate),
+      },
+    },
+  },
+  {
+    $lookup: {
+      from: "users",
+      localField: "user",
+      foreignField: "_id",
+      as: "userData",
+    },
+  },
+  {
+    $lookup: {
+      from: "categories",
+      localField: "category",
+      foreignField: "_id",
+      as: "categoryData",
+    },
+  },
+  {
+    $lookup: {
+      from: "labels",
+      localField: "label",
+      foreignField: "_id",
+      as: "labelData",
+    },
+  },
+  {
+    $unwind: "$userData",
+  },
+  {
+    $project: {
+      category: { $arrayElemAt: ["$categoryData.name", 0] },
+      label: { $arrayElemAt: ["$labelData.name", 0] },
+      title: "$title",
+      amount: "$amount",
+      date: "$date",
+      remarks: "$remarks",
+      timezone: "$userData.timezone",
+    },
+  },
+  {
+    $group: {
+      _id: "$category", // Group by the "category" field
+      categoryTotal: { $sum: "$amount" },
+      expenses: { $push: "$$ROOT" },
+    },
+  },
+  {
+    $group: {
+      _id: null,
+      totalAmount: { $sum: "$categoryTotal" }, // Calculate the total amount across categories
+      categoryResult: { $push: { _id: "$_id", total: "$categoryTotal" } }, // Create an array with category totals
+      expenses: { $push: "$expenses" },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      totalAmount: 1,
+      categoryResult: 1,
+      expenses: {
+        $reduce: {
+          input: "$expenses",
+          initialValue: [],
+          in: { $concatArrays: ["$$value", "$$this"] },
+        },
+      },
+    },
+  },
+]);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
