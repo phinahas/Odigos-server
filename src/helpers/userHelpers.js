@@ -564,6 +564,8 @@ exports.analysisTheExpenseBy = async ({
 
     const expensesFromDb = await Expense.aggregate(aggregateArry);
 
+    if(expensesFromDb.length == 0) return{statusCode:204,message:"No data"}
+
     return { statusCode: 200, finalArray: expensesFromDb };
   } catch (error) {
     console.log(error);
