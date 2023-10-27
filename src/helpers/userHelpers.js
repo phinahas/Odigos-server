@@ -441,12 +441,9 @@ exports.analysisTheExpenseBy = async ({
         },
        
       );
-      aggregateArry.push(
-        {
-          $sort: { day: -1 },
-        },
-       
-      );
+      aggregateArry.push({
+        $sort: { _id: -1 }, // Sort by date in descending order
+      });
       aggregateArry.push(
         {
           $project: {
@@ -508,59 +505,7 @@ exports.analysisTheExpenseBy = async ({
         )
     }
 
-    // const expensesFromDb = await Expense.aggregate([
-    //   {
-    //     $match: {
-    //       user: new ObjectId(userId),
-    //       date: {
-    //         $gte: new Date(startDate),
-    //         $lt: new Date(endDate)
-    //       }
-    //     }
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: 'users',
-    //       localField: 'user',
-    //       foreignField: '_id',
-    //       as: 'userData'
-    //     }
-    //   },
-    //   {
-    //     $unwind: '$userData'
-    //   },
-    //   /////////
-    //   {
-    //     $project: {
-    //       dateToSort:{ $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: '$userData.timezone' } },
-    //       date:1,
-    //       category: 1,
-    //       label: 1,
-    //       title: 1,
-    //       amount: 1,
-    //       remarks: 1,
-    //       timezone: '$userData.timezone'
-    //     }
-    //   },
-    //   {
-    //     $group: {
-    //       _id: '$dateToSort',
-    //       //expenses: { $push: '$$ROOT' }, not needed now
-    //       totalAmount: { $sum: '$amount' }
-    //     }
-    //   },
-    //   {
-    //       $sort:{day:-1}
-    //   },
-    //   {
-    //     $project: {
-    //       _id: 0,
-    //       day: '$_id',
-    //       totalAmount: 1,
-
-    //     }
-    //   }
-    // ]);
+   
 
     const expensesFromDb = await Expense.aggregate(aggregateArry);
 
