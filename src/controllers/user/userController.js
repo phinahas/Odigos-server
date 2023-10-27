@@ -95,7 +95,7 @@ exports.signup = async (req, res, next) => {
       req.body.filter = req.query.filter;
       req.body.customDate = req.query.customDate;
       const response = await userHelper.getExpense(req.body);
-      res.status(response.statusCode).send({message:response.message,expenses:response.expenses,totalAmount:response.totalAmount,previousDayTotalAmount:response.previousDayTotalAmount});
+      res.status(response.statusCode).send({message:response.message,expenses:response.expenses,totalAmount:response.totalAmount,previousDayTotalAmount:response.previousDayTotalAmount,thisMonthExpense:response.thisMonthTotalAmount});
       
     } catch (error) {
       const err = new Error(error.message);
