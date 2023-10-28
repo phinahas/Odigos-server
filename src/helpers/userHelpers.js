@@ -242,6 +242,7 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
 
     let qry = { user: new ObjectId(userId) };
     let prevDayQry = { user: new ObjectId(userId) };
+    let monthQry = { user: new ObjectId(userId) };
     if (filter == "today") {
       // Determine the user's chosen day in their timezone
       const userChosenDay = moment.tz(timezone).startOf("day");
@@ -253,15 +254,24 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       const startOfDayUTC = userChosenDayUTC.toDate();
       const endOfDayUTC = userChosenDayUTC.clone().add(1, "days").toDate();
 
+      // get expense of the previous day
       const startOfPrevDay = userChosenDayUTC.clone().subtract(2,"days").toDate();
       const endOfPrevDay = userChosenDayUTC.clone().subtract(1,"days").toDate();
-      console.log(startOfPrevDay, endOfPrevDay);
+      
+
+
+      // to get the total expense of that month 
+      const userChosenMonth = moment.tz(timezone).startOf("month");
+      const userChosenMonthUTC = userChosenMonth.clone().utc();
+      const startOfMonth = userChosenMonthUTC.toDate();
+      
        
 
-      prevDayQry["date"] = { $gte: startOfPrevDay, $lt: endOfPrevDay };
-
-
       qry["date"] = { $gte: startOfDayUTC, $lt: endOfDayUTC };
+      prevDayQry["date"] = { $gte: startOfPrevDay, $lt: endOfPrevDay };
+      monthQry["date"] ={ $gte: startOfMonth, $lt: endOfDayUTC };
+      
+
     }
     if(filter == "custom"){
       if(!customDate)
@@ -339,6 +349,7 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
     ]);
 
     let prevExpensesFromDb = [];
+    let monthExpensesFromDb = [];
     if(filter == "today"){
          prevExpensesFromDb = await Expense.aggregate([
 
@@ -358,6 +369,24 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
             }
           }
     ])
+    monthExpensesFromDb = await Expense.aggregate([
+
+      {
+        $match: monthQry,
+      },
+      {
+        $group:{
+          _id:null,
+          monthlyExpense:{$sum:'$amount'}
+        }
+      },
+      {
+        $project:{
+          _id:0,
+          monthlyExpense:1
+        }
+      }
+])
 
     }
 
@@ -368,7 +397,8 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       statusCode: 200,
       expenses: expensesFromDb[0].expenses,
       totalAmount: expensesFromDb[0].totalAmount,
-      previousDayTotalAmount:prevExpensesFromDb.length == 0 ? 0:prevExpensesFromDb[0].previousDayExpense
+      previousDayTotalAmount:prevExpensesFromDb.length == 0 ? 0:prevExpensesFromDb[0].previousDayExpense,
+      thisMonthTotalAmount:monthExpensesFromDb.length == 0 ? 0:monthExpensesFromDb[0].monthlyExpense
     };
   } catch (error) {
     console.log(error);
@@ -384,11 +414,6 @@ exports.analysisTheExpenseBy = async ({
 }) => {
   try {
     const userFromDb = await User.findById(userId, { timezone: 1 });
-    const timezone = userFromDb.timezone;
-
-    const startDayUTC = moment(startDate).utc();
-    const endDayUTC = moment(endDate).utc();
-
     let aggregateArry = [
       {
         $match: {
@@ -441,12 +466,9 @@ exports.analysisTheExpenseBy = async ({
         },
        
       );
-      aggregateArry.push(
-        {
-          $sort: { day: -1 },
-        },
-       
-      );
+      aggregateArry.push({
+        $sort: { _id: -1 }, // Sort by date in descending order
+      });
       aggregateArry.push(
         {
           $project: {
@@ -508,59 +530,7 @@ exports.analysisTheExpenseBy = async ({
         )
     }
 
-    // const expensesFromDb = await Expense.aggregate([
-    //   {
-    //     $match: {
-    //       user: new ObjectId(userId),
-    //       date: {
-    //         $gte: new Date(startDate),
-    //         $lt: new Date(endDate)
-    //       }
-    //     }
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: 'users',
-    //       localField: 'user',
-    //       foreignField: '_id',
-    //       as: 'userData'
-    //     }
-    //   },
-    //   {
-    //     $unwind: '$userData'
-    //   },
-    //   /////////
-    //   {
-    //     $project: {
-    //       dateToSort:{ $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: '$userData.timezone' } },
-    //       date:1,
-    //       category: 1,
-    //       label: 1,
-    //       title: 1,
-    //       amount: 1,
-    //       remarks: 1,
-    //       timezone: '$userData.timezone'
-    //     }
-    //   },
-    //   {
-    //     $group: {
-    //       _id: '$dateToSort',
-    //       //expenses: { $push: '$$ROOT' }, not needed now
-    //       totalAmount: { $sum: '$amount' }
-    //     }
-    //   },
-    //   {
-    //       $sort:{day:-1}
-    //   },
-    //   {
-    //     $project: {
-    //       _id: 0,
-    //       day: '$_id',
-    //       totalAmount: 1,
-
-    //     }
-    //   }
-    // ]);
+   
 
     const expensesFromDb = await Expense.aggregate(aggregateArry);
 
