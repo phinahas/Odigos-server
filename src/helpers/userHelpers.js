@@ -390,13 +390,13 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
 
     }
 
-    if (expensesFromDb.length === 0)
-      return { statusCode: 204, message: "No data found" };
+    // if (expensesFromDb.length === 0)
+    //   return { statusCode: 204, message: "No data found" };
 
     return {
       statusCode: 200,
-      expenses: expensesFromDb[0].expenses,
-      totalAmount: expensesFromDb[0].totalAmount,
+      expenses:expensesFromDb.length === 0 ?[]: expensesFromDb[0].expenses,
+      totalAmount:expensesFromDb.length === 0 ? 0: expensesFromDb[0].totalAmount,
       previousDayTotalAmount:prevExpensesFromDb.length == 0 ? 0:prevExpensesFromDb[0].previousDayExpense,
       thisMonthTotalAmount:monthExpensesFromDb.length == 0 ? 0:monthExpensesFromDb[0].monthlyExpense
     };
