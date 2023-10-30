@@ -119,3 +119,20 @@ exports.signup = async (req, res, next) => {
       next(err);
     }
   }
+
+  exports.searchExpense = async(req,res,next)=>{
+    try {
+
+      req.body.keyword = req.query.keyword;
+      
+      const response = await userHelper.searchExpense(req.body);
+      res.status(response.statusCode).send({expense:response.expense});
+      
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+  }
+
+
+  // searchExpense

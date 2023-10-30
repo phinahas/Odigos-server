@@ -542,3 +542,35 @@ exports.analysisTheExpenseBy = async ({
     throw error;
   }
 };
+
+exports.searchExpense = async ({ userId, keyword }) => {
+  try {
+    
+    const expenses = await Expense.find({
+      user: userId,
+      $or: [
+        { title: { $regex: new RegExp(keyword, 'i') } },
+        { remarks: { $regex: new RegExp(keyword, 'i') } },
+        {
+          'category': {
+            $in: await Category.find({ user: userId, $or: [{ name: { $regex: new RegExp(keyword, 'i') } }] }).distinct('_id')
+          }
+        },
+      ],
+    }).populate('category', 'name');
+
+    // Extract only the name from the populated category field
+    const modifiedExpenses = expenses.map(expense => ({
+      ...expense.toObject(),
+      category: expense.category.name,
+    }));
+
+   
+    return { statusCode: 200, expense: modifiedExpenses };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+
