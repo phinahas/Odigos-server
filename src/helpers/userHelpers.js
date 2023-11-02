@@ -255,9 +255,10 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       const endOfDayUTC = userChosenDayUTC.clone().add(1, "days").toDate();
 
       // get expense of the previous day
-      const startOfPrevDay = userChosenDayUTC.clone().subtract(2,"days").toDate();
-      const endOfPrevDay = userChosenDayUTC.clone().subtract(1,"days").toDate();
+      const startOfPrevDay = userChosenDayUTC.clone().subtract(1,"days").toDate();
+      const endOfPrevDay =  userChosenDayUTC.toDate();
       
+     
 
 
       // to get the total expense of that month 
