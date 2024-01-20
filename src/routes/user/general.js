@@ -10,6 +10,7 @@ router.get('/get-categories',tokenverification.isUser,userController.getCategori
 router.get('/get-labels',userController.getLabels);
 router.post('/add-expense',tokenverification.isUser,userController.addExpense);
 router.get('/get-expenses',tokenverification.isUser,userController.getExpense);
+router.get('/search-expenses',tokenverification.isUser,userController.searchExpense);
 router.get('/analyse-the-expense',tokenverification.isUser,userController.analysisTheExpenseBy);
 router.get('/search-with-keyword',tokenverification.isUser,userController.searchWithKeyword);
 

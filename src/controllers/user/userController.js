@@ -120,6 +120,7 @@ exports.signup = async (req, res, next) => {
     }
   }
 
+
   exports.searchWithKeyword = async(req,res,next)=>{
     try {
 
@@ -129,6 +130,19 @@ exports.signup = async (req, res, next) => {
       if(!req.body.keyword) res.status(409).send({message:"Invalid keyword:"+req.body.keyword})
       const response = await userHelper.searchWithKeyword(req.body);
       res.status(response.statusCode).send({message:response.message,expenses:response.expenses});
+    } catch (error) {
+      const err = new Error(error.message);
+      next(err);
+    }
+  }
+  exports.searchExpense = async(req,res,next)=>{
+    try {
+
+      req.body.keyword = req.query.keyword;
+      
+      const response = await userHelper.searchExpense(req.body);
+      res.status(response.statusCode).send({expense:response.expense});
+
       
     } catch (error) {
       const err = new Error(error.message);

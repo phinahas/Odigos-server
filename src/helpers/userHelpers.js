@@ -230,7 +230,7 @@ exports.getLabels = async () => {
   }
 };
 
-exports.getExpense = async ({ userId,customDate, filter }) => {
+exports.getExpense = async ({ userId, customDate, filter }) => {
   try {
     if (filter != "today" && filter != "custom")
       return {
@@ -255,30 +255,27 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
       const endOfDayUTC = userChosenDayUTC.clone().add(1, "days").toDate();
 
       // get expense of the previous day
-      const startOfPrevDay = userChosenDayUTC.clone().subtract(2,"days").toDate();
-      const endOfPrevDay = userChosenDayUTC.clone().subtract(1,"days").toDate();
-      
+      const startOfPrevDay = userChosenDayUTC
+        .clone()
+        .subtract(1, "days")
+        .toDate();
+      const endOfPrevDay = userChosenDayUTC.toDate();
 
-
-      // to get the total expense of that month 
+      // to get the total expense of that month
       const userChosenMonth = moment.tz(timezone).startOf("month");
       const userChosenMonthUTC = userChosenMonth.clone().utc();
       const startOfMonth = userChosenMonthUTC.toDate();
-      
-       
 
       qry["date"] = { $gte: startOfDayUTC, $lt: endOfDayUTC };
       prevDayQry["date"] = { $gte: startOfPrevDay, $lt: endOfPrevDay };
-      monthQry["date"] ={ $gte: startOfMonth, $lt: endOfDayUTC };
-      
-
+      monthQry["date"] = { $gte: startOfMonth, $lt: endOfDayUTC };
     }
-    if(filter == "custom"){
-      if(!customDate)
-      return {
-        statusCode: 409,
-        message: "Invalid date: " + customDate,
-      };
+    if (filter == "custom") {
+      if (!customDate)
+        return {
+          statusCode: 409,
+          message: "Invalid date: " + customDate,
+        };
 
       const chosenDate = moment.tz(customDate, timezone);
       const userChosenDayUTC = chosenDate.clone().utc();
@@ -350,44 +347,41 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
 
     let prevExpensesFromDb = [];
     let monthExpensesFromDb = [];
-    if(filter == "today"){
-         prevExpensesFromDb = await Expense.aggregate([
-
-          {
-            $match: prevDayQry,
+    if (filter == "today") {
+      prevExpensesFromDb = await Expense.aggregate([
+        {
+          $match: prevDayQry,
+        },
+        {
+          $group: {
+            _id: null,
+            previousDayExpense: { $sum: "$amount" },
           },
-          {
-            $group:{
-              _id:null,
-              previousDayExpense:{$sum:'$amount'}
-            }
+        },
+        {
+          $project: {
+            _id: 0,
+            previousDayExpense: 1,
           },
-          {
-            $project:{
-              _id:0,
-              previousDayExpense:1
-            }
-          }
-    ])
-    monthExpensesFromDb = await Expense.aggregate([
-
-      {
-        $match: monthQry,
-      },
-      {
-        $group:{
-          _id:null,
-          monthlyExpense:{$sum:'$amount'}
-        }
-      },
-      {
-        $project:{
-          _id:0,
-          monthlyExpense:1
-        }
-      }
-])
-
+        },
+      ]);
+      monthExpensesFromDb = await Expense.aggregate([
+        {
+          $match: monthQry,
+        },
+        {
+          $group: {
+            _id: null,
+            monthlyExpense: { $sum: "$amount" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            monthlyExpense: 1,
+          },
+        },
+      ]);
     }
 
     // if (expensesFromDb.length === 0)
@@ -395,10 +389,17 @@ exports.getExpense = async ({ userId,customDate, filter }) => {
 
     return {
       statusCode: 200,
-      expenses:expensesFromDb.length === 0 ?[]: expensesFromDb[0].expenses,
-      totalAmount:expensesFromDb.length === 0 ? 0: expensesFromDb[0].totalAmount,
-      previousDayTotalAmount:prevExpensesFromDb.length == 0 ? 0:prevExpensesFromDb[0].previousDayExpense,
-      thisMonthTotalAmount:monthExpensesFromDb.length == 0 ? 0:monthExpensesFromDb[0].monthlyExpense
+      expenses: expensesFromDb.length === 0 ? [] : expensesFromDb[0].expenses,
+      totalAmount:
+        expensesFromDb.length === 0 ? 0 : expensesFromDb[0].totalAmount,
+      previousDayTotalAmount:
+        prevExpensesFromDb.length == 0
+          ? 0
+          : prevExpensesFromDb[0].previousDayExpense,
+      thisMonthTotalAmount:
+        monthExpensesFromDb.length == 0
+          ? 0
+          : monthExpensesFromDb[0].monthlyExpense,
     };
   } catch (error) {
     console.log(error);
@@ -456,31 +457,25 @@ exports.analysisTheExpenseBy = async ({
           timezone: "$userData.timezone",
         },
       });
-      aggregateArry.push(
-        {
-          $group: {
-            _id: "$dateToSort",
-            //expenses: { $push: '$$ROOT' }, not needed now
-            totalAmount: { $sum: "$amount" },
-          },
+      aggregateArry.push({
+        $group: {
+          _id: "$dateToSort",
+          //expenses: { $push: '$$ROOT' }, not needed now
+          totalAmount: { $sum: "$amount" },
         },
-       
-      );
+      });
       aggregateArry.push({
         $sort: { _id: -1 }, // Sort by date in descending order
       });
-      aggregateArry.push(
-        {
-          $project: {
-            _id: 0,
-            day: "$_id",
-            totalAmount: 1,
-          },
-        }
-      )
+      aggregateArry.push({
+        $project: {
+          _id: 0,
+          day: "$_id",
+          totalAmount: 1,
+        },
+      });
     }
-    if(criteria == "category"){
-
+    if (criteria == "category") {
       var categoryLookup = {
         from: "categories",
         localField: "category",
@@ -488,53 +483,47 @@ exports.analysisTheExpenseBy = async ({
         as: "categoryData",
       };
 
-      var catlookup = {$lookup:categoryLookup};
+      var catlookup = { $lookup: categoryLookup };
       aggregateArry.push(catlookup);
-      
-      aggregateArry.push({$project: {
-        day: {
-          $dateToString: {
-            format: "%Y-%m-%d",
-            date: "$date",
-            timezone: "$userData.timezone",
-          },
-        },
-        date: 1,
-        category: { $arrayElemAt: ["$categoryData.name", 0] },
-        amount: 1,}})
-        aggregateArry.push(
-          {
-            $group: {
-              _id: "$category",
-              //expenses: { $push: '$$ROOT' }, not needed now
-              totalAmount: { $sum: "$amount" },
-            },
-          },
-         
-        );
-        aggregateArry.push(
-          {
-            $sort: { day: -1 },
-          },
-         
-        );
-        aggregateArry.push(
-          {
-            $project: {
-              _id: 0,
-              day:1,
-              category:'$_id',
-              totalAmount: 1,
-            },
-          }
-        )
-    }
 
-   
+      aggregateArry.push({
+        $project: {
+          day: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$date",
+              timezone: "$userData.timezone",
+            },
+          },
+          date: 1,
+          category: { $arrayElemAt: ["$categoryData.name", 0] },
+          amount: 1,
+        },
+      });
+      aggregateArry.push({
+        $group: {
+          _id: "$category",
+          //expenses: { $push: '$$ROOT' }, not needed now
+          totalAmount: { $sum: "$amount" },
+        },
+      });
+      aggregateArry.push({
+        $sort: { day: -1 },
+      });
+      aggregateArry.push({
+        $project: {
+          _id: 0,
+          day: 1,
+          category: "$_id",
+          totalAmount: 1,
+        },
+      });
+    }
 
     const expensesFromDb = await Expense.aggregate(aggregateArry);
 
-    if(expensesFromDb.length == 0) return{statusCode:204,message:"No data"}
+    if (expensesFromDb.length == 0)
+      return { statusCode: 204, message: "No data" };
 
     return { statusCode: 200, finalArray: expensesFromDb };
   } catch (error) {
@@ -543,36 +532,49 @@ exports.analysisTheExpenseBy = async ({
   }
 };
 
-exports.searchWithKeyword = async({keyword,userId})=>{
+exports.searchWithKeyword = async ({ keyword, userId }) => {
   try {
     const userFromDb = await User.findById(userId, { timezone: 1 });
-    const regex = new RegExp(keyword, 'i'); // 'i' for case-insensitive search
+    const regex = new RegExp(keyword, "i"); // 'i' for case-insensitive search
     const expensesFromDb = await Expense.find({
       user: userId, // Filter expenses based on userId
       $or: [
-        { $expr: { $regexMatch: { input: { $toString: "$amount" }, regex: regex } } }, 
-        { remarks: { $regex: regex }}, // Case-insensitive search for remarks
-        { title: { $regex: regex } },   // Case-insensitive search for title
+        {
+          $expr: {
+            $regexMatch: { input: { $toString: "$amount" }, regex: regex },
+          },
+        },
+        { remarks: { $regex: regex } }, // Case-insensitive search for remarks
+        { title: { $regex: regex } }, // Case-insensitive search for title
         // Category search with populate
         {
-          'category':{
-            $in:await Category.find({ $or: [ { name: { $regex: regex } }] }).distinct('_id')
-          }
+          category: {
+            $in: await Category.find({
+              $or: [{ name: { $regex: regex } }],
+            }).distinct("_id"),
+          },
         },
         {
-          'label':{
-            $in:await Label.find({ $or: [ { name: { $regex: regex } }] }).distinct('_id')
-          }
+          label: {
+            $in: await Label.find({
+              $or: [{ name: { $regex: regex } }],
+            }).distinct("_id"),
+          },
         },
       ],
-    }).populate([{ path: 'category', select: 'name' }, { path: 'label', select: 'name' }]);
-    if(expensesFromDb.length == 0 ) return {statusCode:204,message:"No data found"};
-    return {statusCode:200,expenses:expensesFromDb,timezone:userFromDb.timezone} 
-
-
-    
+    }).populate([
+      { path: "category", select: "name" },
+      { path: "label", select: "name" },
+    ]);
+    if (expensesFromDb.length == 0)
+      return { statusCode: 204, message: "No data found" };
+    return {
+      statusCode: 200,
+      expenses: expensesFromDb,
+      timezone: userFromDb.timezone,
+    };
   } catch (error) {
     console.log(error);
     throw error;
   }
-}
+};
