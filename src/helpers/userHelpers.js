@@ -542,3 +542,37 @@ exports.analysisTheExpenseBy = async ({
     throw error;
   }
 };
+
+exports.searchWithKeyword = async({keyword,userId})=>{
+  try {
+    const userFromDb = await User.findById(userId, { timezone: 1 });
+    const regex = new RegExp(keyword, 'i'); // 'i' for case-insensitive search
+    const expensesFromDb = await Expense.find({
+      user: userId, // Filter expenses based on userId
+      $or: [
+        { $expr: { $regexMatch: { input: { $toString: "$amount" }, regex: regex } } }, 
+        { remarks: { $regex: regex }}, // Case-insensitive search for remarks
+        { title: { $regex: regex } },   // Case-insensitive search for title
+        // Category search with populate
+        {
+          'category':{
+            $in:await Category.find({ $or: [ { name: { $regex: regex } }] }).distinct('_id')
+          }
+        },
+        {
+          'label':{
+            $in:await Label.find({ $or: [ { name: { $regex: regex } }] }).distinct('_id')
+          }
+        },
+      ],
+    }).populate([{ path: 'category', select: 'name' }, { path: 'label', select: 'name' }]);
+    if(expensesFromDb.length == 0 ) return {statusCode:204,message:"No data found"};
+    return {statusCode:200,expenses:expensesFromDb,timezone:userFromDb.timezone} 
+
+
+    
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
